@@ -1,6 +1,6 @@
 
 import { app } from './app';
-import {PORT, NODE_ENV } from './config';
+import {PORT, NODE_ENV } from './config/index';
 import { connectDatabase } from './database/mongodb';
 
 
