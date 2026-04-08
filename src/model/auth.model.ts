@@ -3,12 +3,7 @@ import { LoginSchema, RegisterSchema } from '../types/auth.types';
 import { time } from 'node:console';
 
 
-const Login: Schema = new Schema({
-    email:{ type: String, required: true, unique:true},
-    password:{ type: String, required: true},
-}, { timestamps: true });
-
-const Register: Schema =new Schema(
+const UserSchema: Schema = new Schema(
     {
         full_name: { type: String, required:true},
         email: { type: String, required: true, unique:true},
@@ -17,19 +12,13 @@ const Register: Schema =new Schema(
     },{
     timestamps: true
     }
-)
+);
 
-export interface ILogin extends Document {
-    email: string;
-    password: string;
-}
-
-export interface IRegister extends Document {
+export interface IUser extends Document {
     full_name: string;
     email: string;
     phone_number: string;
     password: string;
 }
 
-export const LoginModel = mongoose.model<ILogin>('Login', Login);
-export const RegisterModel = mongoose.model<IRegister>('Register', Register);
+export const UserModel = mongoose.model<IUser>('User', UserSchema);

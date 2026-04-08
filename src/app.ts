@@ -6,6 +6,7 @@ import { PORT, CORS_ORIGIN, NODE_ENV } from './config';
 import cookieParser from 'cookie-parser';
 import { time } from 'node:console';
 import e from 'express';
+import authRoutes from './routes/auth.routes';
 
 
 const app: Application = express();
@@ -46,7 +47,8 @@ app.use(express.json({limit: '50mb'}));
 app.use(express.urlencoded({extended: true, limit: '50mb'}));
 // for parsing urlencoded request bodies with a size limit of 50mb and extended option for rich objects and arrays
 
-
+app.use('/auth', authRoutes);
+// for auth routes which will be handled by the auth controller and auth service and auth repository and auth model
 
 app.use('/health', (req: Request, res: Response) => {
     return res.status(200).json({
