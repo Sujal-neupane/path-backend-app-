@@ -74,4 +74,42 @@ export class AuthController{
             });
          }
     }
+
+    async requestPasswordReset(req: Request, res: Response) {
+        try {
+            const { email } = req.body;
+            if (!email) return res.status(400).json({ success: false, message: 'Email required' });
+
+            const result = await authService.requestPasswordReset(email);
+            return res.status(200).json({
+                success: true,
+                ...result 
+            });
+        } catch (error: any) {
+            return res.status(error.statusCode ?? 500).json({
+                success: false,
+                message: error.message || 'Error requesting reset'
+            });
+        }
+    }
+
+    async resetPassword(req: Request, res: Response) {
+        try {
+            const { email, token, newPassword } = req.body;
+            if (!email || !token || !newPassword) {
+                return res.status(400).json({ success: false, message: 'Missing fields' });
+            }
+
+            const result = await authService.resetPassword(email, token, newPassword);
+            return res.status(200).json({
+                success: true,
+                ...result
+            });
+        } catch (error: any) {
+            return res.status(error.statusCode ?? 500).json({
+                success: false,
+                message: error.message || 'Error resetting password'
+            });
+        }
+    }
 }

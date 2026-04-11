@@ -84,6 +84,45 @@ export class AuthService {
         };
     }
 
+    async requestPasswordReset(email: string) {
+        const user = await UserModel.findOne({ email });
+        if (!user) {
+            throw new HttpError(404, 'User with this email does not exist');
+        }
+
+        // In a real app, generate a random 6-digit OTP or a secure token
+        const resetToken = Math.floor(100000 + Math.random() * 900000).toString();
+        
+        user.resetPasswordToken = resetToken;
+        user.resetPasswordExpires = new Date(Date.now() + 3600000); // 1 hour
+        await user.save();
+
+        // For now, we return it so the user can see it (in production, send via Email/SMS)
+        return {
+            message: 'Password reset code generated',
+            resetToken // ONLY return this during development for testing
+        };
+    }
+
+    async resetPassword(email: string, token: string, newPass: string) {
+        const user = await UserModel.findOne({
+            email,
+            resetPasswordToken: token,
+            resetPasswordExpires: { $gt: new Date() }
+        });
+
+        if (!user) {
+            throw new HttpError(400, 'Invalid or expired reset token');
+        }
+
+        user.password = await bcrypt.hash(newPass, 10);
+        user.resetPasswordToken = undefined;
+        user.resetPasswordExpires = undefined;
+        await user.save();
+
+        return { message: 'Password reset successful' };
+    }
+
     async updateUser (userId: string, updateData: any) {
 
         const user = await UserModel.findByIdAndUpdate(
