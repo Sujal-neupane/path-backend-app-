@@ -7,6 +7,7 @@ import cookieParser from 'cookie-parser';
 import { time } from 'node:console';
 import e from 'express';
 import authRoutes from './routes/auth.routes';
+import dashboardRoutes from './routes/dashboard.routes';
 
 
 const app: Application = express();
@@ -49,6 +50,9 @@ app.use(express.urlencoded({extended: true, limit: '50mb'}));
 
 app.use('/auth', authRoutes);
 // for auth routes which will be handled by the auth controller and auth service and auth repository and auth model
+
+app.use('/dashboard', dashboardRoutes);
+// dashboard feature endpoints with authenticated user context
 
 app.use('/health', (req: Request, res: Response) => {
     return res.status(200).json({
