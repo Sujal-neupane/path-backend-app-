@@ -51,16 +51,12 @@ export class TrekController {
 
   async list(req: AuthenticatedRequest, res: Response) {
     try {
-      if (!req.user?.id) {
-        throw new HttpError(401, 'Unauthorized');
-      }
-
       const parsed = ListTreksQueryDto.safeParse(req.query);
       if (!parsed.success) {
         throw new HttpError(400, 'Invalid list query payload', parsed.error.issues);
       }
 
-      const response = await trekService.listTreks(req.user.id, parsed.data);
+      const response = await trekService.listTreks(parsed.data);
 
       return res.status(200).json({
         success: true,
@@ -78,12 +74,8 @@ export class TrekController {
 
   async getById(req: AuthenticatedRequest, res: Response) {
     try {
-      if (!req.user?.id) {
-        throw new HttpError(401, 'Unauthorized');
-      }
-
       const trekId = this.getParam(req.params.trekId, 'Trek id');
-      const trek = await trekService.getTrekById(req.user.id, trekId);
+      const trek = await trekService.getTrekById(trekId);
 
       return res.status(200).json({
         success: true,
@@ -192,12 +184,8 @@ export class TrekController {
 
   async summary(req: AuthenticatedRequest, res: Response) {
     try {
-      if (!req.user?.id) {
-        throw new HttpError(401, 'Unauthorized');
-      }
-
       const trekId = this.getParam(req.params.trekId, 'Trek id');
-      const summary = await trekService.getTrekSummary(req.user.id, trekId);
+      const summary = await trekService.getTrekSummary(trekId);
 
       return res.status(200).json({
         success: true,

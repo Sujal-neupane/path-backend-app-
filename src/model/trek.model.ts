@@ -23,6 +23,11 @@ export interface ITrek extends Document {
   region: string;
   difficulty: TrekDifficulty;
   status: TrekStatus;
+  cover_image_url?: string;
+  gallery_image_urls: string[];
+  is_official: boolean;
+  is_published: boolean;
+  created_by_role: 'user' | 'admin';
   start_date: Date;
   end_date?: Date;
   target_budget_npr?: number;
@@ -70,6 +75,16 @@ const TrekSchema = new Schema<ITrek>(
       default: 'planned',
       required: true,
       index: true,
+    },
+    cover_image_url: { type: String, trim: true },
+    gallery_image_urls: { type: [String], default: [] },
+    is_official: { type: Boolean, default: false, index: true },
+    is_published: { type: Boolean, default: true, index: true },
+    created_by_role: {
+      type: String,
+      enum: ['user', 'admin'],
+      default: 'user',
+      required: true,
     },
     start_date: { type: Date, required: true },
     end_date: { type: Date },

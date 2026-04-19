@@ -45,6 +45,11 @@ export class TrekService {
       region: payload.region,
       difficulty: payload.difficulty,
       status: 'planned',
+      cover_image_url: payload.coverImageUrl,
+      gallery_image_urls: payload.galleryImageUrls ?? [],
+      is_official: false,
+      is_published: true,
+      created_by_role: 'user',
       start_date: payload.startDate,
       end_date: payload.endDate,
       target_budget_npr: payload.targetBudgetNpr,
@@ -55,20 +60,26 @@ export class TrekService {
     });
   }
 
-  async listTreks(userId: string, query: ListTreksQueryDtoType): Promise<{ data: ITrek[]; meta: PaginationMeta }> {
-    this.ensureValidObjectId(userId, 'User id');
-
+  async listTreks(query: ListTreksQueryDtoType): Promise<{ data: ITrek[]; meta: PaginationMeta }> {
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
     const skip = (page - 1) * limit;
 
     const [treks, total] = await Promise.all([
-      this.trekRepository.listByUser(userId, {
+      this.trekRepository.listCatalog({
         status: query.status as TrekStatus | undefined,
+        difficulty: query.difficulty,
+        region: query.region,
+        isOfficial: query.isOfficial,
         skip,
         limit,
       }),
-      this.trekRepository.countByUser(userId, query.status as TrekStatus | undefined),
+      this.trekRepository.countCatalog({
+        status: query.status as TrekStatus | undefined,
+        difficulty: query.difficulty,
+        region: query.region,
+        isOfficial: query.isOfficial,
+      }),
     ]);
 
     return {
@@ -82,11 +93,10 @@ export class TrekService {
     };
   }
 
-  async getTrekById(userId: string, trekId: string): Promise<ITrek> {
-    this.ensureValidObjectId(userId, 'User id');
+  async getTrekById(trekId: string): Promise<ITrek> {
     this.ensureValidObjectId(trekId, 'Trek id');
 
-    const trek = await this.trekRepository.findByIdForUser(trekId, userId);
+    const trek = await this.trekRepository.findById(trekId);
     if (!trek) {
       throw new HttpError(404, 'Trek not found');
     }
@@ -164,8 +174,8 @@ export class TrekService {
     return trek;
   }
 
-  async getTrekSummary(userId: string, trekId: string): Promise<Record<string, unknown>> {
-    const trek = await this.getTrekById(userId, trekId);
+  async getTrekSummary(trekId: string): Promise<Record<string, unknown>> {
+    const trek = await this.getTrekById(trekId);
 
     const reachedCount = trek.checkpoints.filter((checkpoint) => checkpoint.is_reached).length;
     const totalCount = trek.checkpoints.length;

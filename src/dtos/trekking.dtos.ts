@@ -16,6 +16,8 @@ export const CreateTrekDto = z.object({
   targetBudgetNpr: z.number().nonnegative().optional(),
   expectedDistanceKm: z.number().positive().optional(),
   expectedElevationGainM: z.number().nonnegative().optional(),
+  coverImageUrl: z.string().url().optional(),
+  galleryImageUrls: z.array(z.string().url()).max(10).optional(),
   notes: z.string().max(1000).optional(),
 });
 
@@ -23,6 +25,9 @@ export type CreateTrekDtoType = z.infer<typeof CreateTrekDto>;
 
 export const ListTreksQueryDto = z.object({
   status: TrekStatusEnum.optional(),
+  difficulty: TrekDifficultyEnum.optional(),
+  region: z.string().min(2).max(80).optional(),
+  isOfficial: z.coerce.boolean().optional(),
   limit: z.coerce.number().int().min(1).max(100).optional(),
   page: z.coerce.number().int().min(1).optional(),
 });

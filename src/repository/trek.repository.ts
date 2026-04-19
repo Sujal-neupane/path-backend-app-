@@ -8,6 +8,11 @@ type CreateTrekInput = {
   region: string;
   difficulty: ITrek['difficulty'];
   status: TrekStatus;
+  cover_image_url?: string;
+  gallery_image_urls: string[];
+  is_official: boolean;
+  is_published: boolean;
+  created_by_role: 'user' | 'admin';
   start_date: Date;
   end_date?: Date;
   target_budget_npr?: number;
@@ -19,8 +24,21 @@ type CreateTrekInput = {
 
 export interface ITrekRepository {
   create(data: CreateTrekInput): Promise<ITrek>;
-  listByUser(userId: string, filters: { status?: TrekStatus; skip: number; limit: number }): Promise<ITrek[]>;
-  countByUser(userId: string, status?: TrekStatus): Promise<number>;
+  listCatalog(filters: {
+    status?: TrekStatus;
+    difficulty?: ITrek['difficulty'];
+    region?: string;
+    isOfficial?: boolean;
+    skip: number;
+    limit: number;
+  }): Promise<ITrek[]>;
+  countCatalog(filters: {
+    status?: TrekStatus;
+    difficulty?: ITrek['difficulty'];
+    region?: string;
+    isOfficial?: boolean;
+  }): Promise<number>;
+  findById(trekId: string): Promise<ITrek | null>;
   findByIdForUser(trekId: string, userId: string): Promise<ITrek | null>;
   updateStatusForUser(trekId: string, userId: string, status: TrekStatus): Promise<ITrek | null>;
   pushCheckpointForUser(trekId: string, userId: string, checkpoint: Omit<ITrekCheckpoint, '_id'>): Promise<ITrek | null>;
@@ -38,11 +56,30 @@ export class TrekRepository implements ITrekRepository {
     return trek.save();
   }
 
-  async listByUser(userId: string, filters: { status?: TrekStatus; skip: number; limit: number }): Promise<ITrek[]> {
-    const query: Record<string, unknown> = { user_id: new Types.ObjectId(userId) };
+  async listCatalog(filters: {
+    status?: TrekStatus;
+    difficulty?: ITrek['difficulty'];
+    region?: string;
+    isOfficial?: boolean;
+    skip: number;
+    limit: number;
+  }): Promise<ITrek[]> {
+    const query: Record<string, unknown> = { is_published: true };
 
     if (filters.status) {
       query.status = filters.status;
+    }
+
+    if (typeof filters.isOfficial === 'boolean') {
+      query.is_official = filters.isOfficial;
+    }
+
+    if (filters.difficulty) {
+      query.difficulty = filters.difficulty;
+    }
+
+    if (filters.region) {
+      query.region = { $regex: filters.region, $options: 'i' };
     }
 
     return TrekModel.find(query)
@@ -51,13 +88,37 @@ export class TrekRepository implements ITrekRepository {
       .limit(filters.limit);
   }
 
-  async countByUser(userId: string, status?: TrekStatus): Promise<number> {
-    const query: Record<string, unknown> = { user_id: new Types.ObjectId(userId) };
-    if (status) {
-      query.status = status;
+  async countCatalog(filters: {
+    status?: TrekStatus;
+    difficulty?: ITrek['difficulty'];
+    region?: string;
+    isOfficial?: boolean;
+  }): Promise<number> {
+    const query: Record<string, unknown> = { is_published: true };
+    if (filters.status) {
+      query.status = filters.status;
+    }
+
+    if (typeof filters.isOfficial === 'boolean') {
+      query.is_official = filters.isOfficial;
+    }
+
+    if (filters.difficulty) {
+      query.difficulty = filters.difficulty;
+    }
+
+    if (filters.region) {
+      query.region = { $regex: filters.region, $options: 'i' };
     }
 
     return TrekModel.countDocuments(query);
+  }
+
+  async findById(trekId: string): Promise<ITrek | null> {
+    return TrekModel.findOne({
+      _id: new Types.ObjectId(trekId),
+      is_published: true,
+    });
   }
 
   async findByIdForUser(trekId: string, userId: string): Promise<ITrek | null> {
