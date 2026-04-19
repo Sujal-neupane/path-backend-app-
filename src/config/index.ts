@@ -12,15 +12,15 @@ export const JWT_SECRET: string =
 process.env.JWT_SECRET || 'qwertyuiopasdfghjklzxcvbnm1234567890';
 
 export const JWT_EXPIRES_IN: string =
-process.env.JWT_expiresIn || '7d'; 
+process.env.JWT_EXPIRES_IN || '7d'; 
 
 export const NODE_ENV: string =
 process.env.NODE_ENV || 'development';
 
 export const CORS_ORIGIN: string[] =
 process.env.CORS_ORIGIN?.split(',') || 
-['http://localhost:50505050',
+["http://localhost:5173",
   'http://localhost:5999',
-  'http://localhost:9999'
+  'http://localhost:3000'
 ];
 
