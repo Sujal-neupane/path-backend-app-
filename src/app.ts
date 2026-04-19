@@ -6,6 +6,7 @@ import { CORS_ORIGIN, NODE_ENV } from './config';
 import cookieParser from 'cookie-parser';
 import authRoutes from './routes/auth.routes';
 import dashboardRoutes from './routes/dashboard.routes';
+import trekRoutes from './routes/trek.routes';
 import { globalErrorHandler, notFoundHandler } from './middlewares/error.middleware';
 
 
@@ -52,6 +53,9 @@ app.use('/auth', authRoutes);
 
 app.use('/dashboard', dashboardRoutes);
 // dashboard feature endpoints with authenticated user context
+
+app.use('/treks', trekRoutes);
+// trekking domain endpoints for trek planning, status, and checkpoints
 
 app.use('/health', (req: Request, res: Response) => {
     return res.status(200).json({
