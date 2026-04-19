@@ -1,143 +1,157 @@
-import { UserModel } from '../model/auth.model';
+import { randomInt } from 'crypto';
 import jwt from 'jsonwebtoken';
+import { Secret, SignOptions } from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import {profile} from 'console';
-import {HttpError} from '../error/http-error';
+import { HttpError } from '../errors/http-error';
 import { AuthRepository } from '../repository/auth.repository';
-import { JWT_SECRET } from '../config';
+import { JWT_EXPIRES_IN, JWT_SECRET } from '../config';
+import { CreateUserDtoType, UpdateUserDtoType } from '../dtos/auth.dtos';
 
+interface AuthUserView {
+    id: string;
+    email: string;
+    fullName: string;
+    phoneNumber: string;
+}
 
-const CLIENT_URL = process.env.CLIENT_URL as string;
+interface AuthResponse {
+    token: string;
+    user: AuthUserView;
+}
 
 export class AuthService {
-    async createUser( userData: any){
-        const existingUser = await  UserModel.findOne({ email: userData.email });
+    private readonly authRepository: AuthRepository;
+
+    constructor(authRepository: AuthRepository = new AuthRepository()) {
+        this.authRepository = authRepository;
+    }
+
+    private signToken(payload: { id: string; email: string }): string {
+        return jwt.sign(payload, JWT_SECRET as Secret, { expiresIn: JWT_EXPIRES_IN } as SignOptions);
+    }
+
+    private mapUser(user: {
+        _id: unknown;
+        email: string;
+        full_name: string;
+        phone_number: string;
+    }): AuthUserView {
+        return {
+            id: String(user._id),
+            email: user.email,
+            fullName: user.full_name,
+            phoneNumber: user.phone_number,
+        };
+    }
+
+    async createUser(userData: CreateUserDtoType): Promise<AuthResponse> {
+        const existingUser = await this.authRepository.getUserByEmail(userData.email);
         if (existingUser) {
             throw new HttpError(400, 'Email already exists');
         }
+
         const hashedPassword = await bcrypt.hash(userData.password, 10);
 
-        const user = new UserModel({
+        const user = await this.authRepository.createUser({
             full_name: userData.fullName,
             email: userData.email,
             phone_number: userData.phoneNumber,
             password: hashedPassword,
         });
-         await user.save();
 
-         const token = jwt.sign(
-            {
-                id:user._id.toString(),
-                email: user.email,
-            },
-            JWT_SECRET,
-            { expiresIn: '30d' }
-         ); 
-         return {
+        const token = this.signToken({
+            id: user._id.toString(),
+            email: user.email,
+        });
+
+        return {
             token,
-            user: {
-                id: user._id.toString(),
-                email: user.email,
-                full_name: user.full_name,
-                phone_number: user.phone_number,
-            }
-         }
+            user: this.mapUser(user),
+        };
     }
     
-    async loginUser (email: string, password: string) {
-        const user = await UserModel.findOne({ email });
+    async loginUser(email: string, password: string): Promise<AuthResponse> {
+        const user = await this.authRepository.getUserByEmail(email);
         if (!user) {
             throw new HttpError(404, 'User not found');
         }
+
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
             throw new HttpError(401, 'Invalid credentials');
         }
-        const token = jwt.sign(
-            {
-                id: user._id.toString(),
-                email: user.email,
-            },
-            JWT_SECRET,
-            { expiresIn: '30d' }
-        );
+
+        const token = this.signToken({
+            id: user._id.toString(),
+            email: user.email,
+        });
+
         return {
             token,
-            user: {
-                id: user._id.toString(),
-                email: user.email,
-                full_name: user.full_name,
-                phone_number: user.phone_number,
-            }
+            user: this.mapUser(user),
         };
     }
 
-    async getUserById (userId: string) {
-        const user = await UserModel.findById(userId);
+    async getUserById(userId: string): Promise<AuthUserView> {
+        const user = await this.authRepository.getUserById(userId);
 
         if (!user) {
             throw new HttpError(404, 'User not found');
         }
-        return {
-            id: user._id.toString(),
-            email: user.email,
-        };
+
+        return this.mapUser(user);
     }
 
-    async requestPasswordReset(email: string) {
-        const user = await UserModel.findOne({ email });
+    async requestPasswordReset(email: string): Promise<{ message: string; resetToken: string }> {
+        const user = await this.authRepository.getUserByEmail(email);
         if (!user) {
             throw new HttpError(404, 'User with this email does not exist');
         }
 
-        // In a real app, generate a random 6-digit OTP or a secure token
-        const resetToken = Math.floor(100000 + Math.random() * 900000).toString();
-        
-        user.resetPasswordToken = resetToken;
-        user.resetPasswordExpires = new Date(Date.now() + 3600000); // 1 hour
-        await user.save();
+        const resetToken = String(randomInt(100000, 1000000));
+        const resetPasswordExpires = new Date(Date.now() + 60 * 60 * 1000);
 
-        // For now, we return it so the user can see it (in production, send via Email/SMS)
+        await this.authRepository.savePasswordResetToken(user._id.toString(), resetToken, resetPasswordExpires);
+
         return {
             message: 'Password reset code generated',
-            resetToken // ONLY return this during development for testing
+            // Keep this only for local testing; in production it should be sent via email/SMS.
+            resetToken,
         };
     }
 
-    async resetPassword(email: string, token: string, newPass: string) {
-        const user = await UserModel.findOne({
-            email,
-            resetPasswordToken: token,
-            resetPasswordExpires: { $gt: new Date() }
-        });
+    async resetPassword(email: string, token: string, newPass: string): Promise<{ message: string }> {
+        const user = await this.authRepository.getUserByPasswordResetToken(email, token, new Date());
 
         if (!user) {
             throw new HttpError(400, 'Invalid or expired reset token');
         }
 
-        user.password = await bcrypt.hash(newPass, 10);
-        user.resetPasswordToken = undefined;
-        user.resetPasswordExpires = undefined;
-        await user.save();
+        const hashedPassword = await bcrypt.hash(newPass, 10);
+        await this.authRepository.updateUser(user._id.toString(), { password: hashedPassword });
+        await this.authRepository.clearPasswordResetToken(user._id.toString());
 
         return { message: 'Password reset successful' };
     }
 
-    async updateUser (userId: string, updateData: any) {
+    async updateUser(userId: string, updateData: UpdateUserDtoType): Promise<AuthUserView> {
+        const payload: UpdateUserDtoType = { ...updateData };
 
-        const user = await UserModel.findByIdAndUpdate(
-            userId,
-            {$set: updateData},
-            {new: true}
-        );
+        if (payload.password) {
+            payload.password = await bcrypt.hash(payload.password, 10);
+        }
+
+        const mappedPayload: Record<string, string> = {};
+        if (payload.fullName) mappedPayload.full_name = payload.fullName;
+        if (payload.email) mappedPayload.email = payload.email;
+        if (payload.phoneNumber) mappedPayload.phone_number = payload.phoneNumber;
+        if (payload.password) mappedPayload.password = payload.password;
+
+        const user = await this.authRepository.updateUser(userId, mappedPayload);
         if (!user) {
             throw new HttpError(404, 'User not found');
         }
-        return {
-            id: user._id.toString(),
-            email: user.email,
-        };
+
+        return this.mapUser(user);
     }
 }
-
-// so for the auth service basically we impemented the business logic for the authentication and user management and we are using the auth repository to interact with the database and we are also using the http error class to handle the errors and we are also using the jwt to generate the token for the user and we are also using bcrypt to hash the password for the user and we are also using the zod to validate the request body for the login and register routes

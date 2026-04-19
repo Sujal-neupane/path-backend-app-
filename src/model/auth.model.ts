@@ -50,12 +50,13 @@ const UserSchema = new Schema<IUser>(
 // Keep API responses clean by removing internal Mongo fields.
 UserSchema.set('toJSON', {
     transform: (_doc, ret) => {
-        delete ret.password;
-        delete ret.resetPasswordToken;
-        delete ret.resetPasswordExpires;
-        ret.id = ret._id?.toString();
-        delete ret._id;
-        return ret;
+        const mapped = ret as unknown as Record<string, unknown>;
+        mapped.id = String(mapped._id);
+        delete mapped.password;
+        delete mapped.resetPasswordToken;
+        delete mapped.resetPasswordExpires;
+        delete mapped._id;
+        return mapped;
     },
 });
 

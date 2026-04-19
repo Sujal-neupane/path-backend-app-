@@ -11,13 +11,15 @@ export class DashboardService {
 
     const firstName = user.full_name?.split(' ')[0] || 'Trekker';
 
+    const dateLabel = new Intl.DateTimeFormat('en-US', {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+    }).format(new Date()).toUpperCase();
+
     return {
       header: {
-        dateLabel: new Date().toLocaleDateString('en-US', {
-          weekday: 'long',
-          month: 'long',
-          day: 'numeric',
-        }).toUpperCase(),
+        dateLabel,
         greeting: `Journey Dashboard, ${firstName}`,
         location: 'Namche Bazaar • Everest Region',
       },

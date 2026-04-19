@@ -26,6 +26,7 @@ export class DashboardController {
       return res.status(error.statusCode ?? 500).json({
         success: false,
         message: error.message || 'Failed to fetch dashboard overview',
+        details: error.details,
       });
     }
   }

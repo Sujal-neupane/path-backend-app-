@@ -1,13 +1,12 @@
-import express, {Application, NextFunction, Request, Response} from 'express';
+import express, { Application, Request, Response } from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
 import helmet from 'helmet';
-import { PORT, CORS_ORIGIN, NODE_ENV } from './config';
+import { CORS_ORIGIN, NODE_ENV } from './config';
 import cookieParser from 'cookie-parser';
-import { time } from 'node:console';
-import e from 'express';
 import authRoutes from './routes/auth.routes';
 import dashboardRoutes from './routes/dashboard.routes';
+import { globalErrorHandler, notFoundHandler } from './middlewares/error.middleware';
 
 
 const app: Application = express();
@@ -71,13 +70,9 @@ app.get('/', (req: Request, res: Response) => {
 });
 // for root endpoint to check if the server is running and also to get a welcome message
 
-app.use((req: Request, res: Response) => {
-    return res.status(404).json({
-        success: false,
-        error: 'Not Found',
-    });
-});
-// for handling 404 errors for undefined routes
+app.use(notFoundHandler);
+app.use(globalErrorHandler);
+// centralized not-found and error handlers for all feature modules
 
 
 

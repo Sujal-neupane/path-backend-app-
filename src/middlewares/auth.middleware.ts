@@ -15,15 +15,16 @@ export const authenticate = (
 	next: NextFunction,
 ): Response | void => {
 	const authHeader = req.headers.authorization;
+	const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.split(' ')[1] : undefined;
+	const cookieToken = req.cookies?.accessToken as string | undefined;
+	const token = bearerToken || cookieToken;
 
-	if (!authHeader?.startsWith('Bearer ')) {
+	if (!token) {
 		return res.status(401).json({
 			success: false,
-			message: 'Missing or invalid authorization token',
+			message: 'Missing authorization token',
 		});
 	}
-
-	const token = authHeader.split(' ')[1];
 
 	try {
 		const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
